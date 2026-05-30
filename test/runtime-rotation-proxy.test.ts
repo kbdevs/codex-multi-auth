@@ -55,6 +55,7 @@ interface FetchCall {
 const openServers: RuntimeRotationProxyServer[] = [];
 const openManagers: AccountManager[] = [];
 const DEFAULT_CLIENT_API_KEY = "runtime-secret";
+let previousCodexCliSyncEnv: string | undefined;
 
 function createStorage(now: number, count = 2): AccountStorageV3 {
 	return {
@@ -289,6 +290,8 @@ function textEventStream(body = "data: {}\n\n", headers?: HeadersInit): Response
 }
 
 beforeEach(() => {
+	previousCodexCliSyncEnv = process.env.CODEX_MULTI_AUTH_SYNC_CODEX_CLI;
+	process.env.CODEX_MULTI_AUTH_SYNC_CODEX_CLI = "0";
 	resetTrackers();
 	clearCircuitBreakers();
 	resetRefreshQueue();
@@ -312,6 +315,12 @@ afterEach(async () => {
 	resetTrackers();
 	clearCircuitBreakers();
 	resetRefreshQueue();
+	if (previousCodexCliSyncEnv === undefined) {
+		delete process.env.CODEX_MULTI_AUTH_SYNC_CODEX_CLI;
+	} else {
+		process.env.CODEX_MULTI_AUTH_SYNC_CODEX_CLI = previousCodexCliSyncEnv;
+	}
+	previousCodexCliSyncEnv = undefined;
 });
 
 describe("runtime rotation proxy", () => {
