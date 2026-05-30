@@ -508,7 +508,56 @@ async function writeAppBindStartup(state: AppBindState): Promise<void> {
 	}
 }
 
-async function removeAppBindStartup(state: AppBindState): Promise<void> {
+async function runLaunchctlBestEffort(args: string[]): Promise<void> {
+	await new Promise<void>((resolve) => {
+		const child = spawn("launchctl", args, {
+			stdio: "ignore",
+			windowsHide: true,
+		});
+		let finished = false;
+		const finish = () => {
+			if (finished) return;
+			finished = true;
+			clearTimeout(timer);
+			resolve();
+		};
+		const timer = setTimeout(() => {
+			try {
+				child.kill("SIGTERM");
+			} catch {
+				// Best-effort cleanup.
+			}
+			finish();
+		}, 2_000);
+		child.once("error", finish);
+		child.once("exit", finish);
+	});
+}
+
+async function unloadMacLaunchAgentBestEffort(
+	state: AppBindState,
+	options: AppBindOptions,
+): Promise<void> {
+	if (state.platform !== "darwin" || !state.launchAgentPath) return;
+	const realHome = homedir();
+	if ((options.home ?? realHome) !== realHome) return;
+	const expectedPath = resolveMacLaunchAgentPath(realHome);
+	if (state.launchAgentPath !== expectedPath) return;
+	if (typeof process.getuid === "function") {
+		await runLaunchctlBestEffort([
+			"bootout",
+			`gui/${process.getuid()}`,
+			state.launchAgentPath,
+		]);
+	}
+	await runLaunchctlBestEffort(["remove", MACOS_LAUNCH_AGENT_ID]);
+}
+
+async function removeAppBindStartup(
+	state: AppBindState,
+	options: AppBindOptions = {},
+): Promise<void> {
+	await unloadMacLaunchAgentBestEffort(state, options);
 	const candidates = [state.startupPath, state.launchAgentPath].filter(
 		(path): path is string => typeof path === "string" && path.length > 0,
 	);
@@ -755,13 +804,13 @@ async function unbindCodexAppRuntimeRotationLocked(
 	const state = await readAppBindState(paths.statePath);
 	const router = await readRouterStatus(paths.statusPath);
 	if (state) {
+		await removeAppBindStartup(state, options);
 		await stopRouter(router);
 		if (router?.pid && isProcessAlive(router.pid)) {
 			options.log?.(
 				`Warning: runtime router (pid ${router.pid}) did not stop; continuing cleanup`,
 			);
 		}
-		await removeAppBindStartup(state);
 	}
 
 	const backup = await readAppBindBackup(paths.backupPath);
