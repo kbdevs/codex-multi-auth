@@ -73,11 +73,11 @@ The default-on localhost Responses proxy returns JSON error payloads with a stab
 | `runtime_rotation_proxy_not_found` | `404` | Request path or method is outside the supported Responses/model discovery surface |
 | `runtime_rotation_proxy_unauthorized` | `401` | Local request did not include the per-process proxy client key |
 | `runtime_rotation_proxy_payload_too_large` | `413` | Request body exceeded the proxy safety cap |
-| `codex_runtime_rotation_pool_exhausted` | `429` or `503` | No managed account can currently service the runtime request |
-| `codex_pinned_account_unavailable` | `503` | A manual pin is set (via `codex-multi-auth switch`) but the pinned account is rate-limited, cooling down, disabled, or blocked by policy. Run `codex-multi-auth status` for details, or `codex-multi-auth unpin` to allow rotation |
+| `codex_runtime_rotation_pool_exhausted` | `503` | No managed account can currently service the runtime request |
+| `codex_pinned_account_unavailable` | `503` | A manual pin is set (via `codex-multi-auth switch`) but the pinned account is cooling down, disabled, or blocked by policy. Run `codex-multi-auth status` for details, or `codex-multi-auth unpin` to allow rotation |
 | `codex_runtime_rotation_proxy_error` | `500` | Proxy failed before forwarding the request |
 
-Pool exhaustion includes a `reason`, `retry_after_ms`, and a hint to run `codex-multi-auth rotation status`. Pinned-account-unavailable responses include a `pinnedAccountIndex` field identifying the pinned account, a structured `reason` field carrying the runtime skip reason (for example `rate-limited`, `cooling-down:auth-failure`, `circuit-open`, `disabled`, `workspace-disabled`, `policy-blocked`, `missing`, `already-attempted`) or `null` when no reason was recorded, and an `account_skip_reasons` map keyed by account index that mirrors the pool-exhausted response shape. The human-readable `message` appends the same reason in parentheses when present (see issue #486).
+Pool exhaustion includes a `reason`, `retry_after_ms`, and a hint to run `codex-multi-auth rotation status`. Pinned-account-unavailable responses include a `pinnedAccountIndex` field identifying the pinned account, a structured `reason` field carrying the runtime skip reason (for example `cooling-down:auth-failure`, `circuit-open`, `disabled`, `workspace-disabled`, `policy-blocked`, `missing`, `already-attempted`) or `null` when no reason was recorded, and an `account_skip_reasons` map keyed by account index that mirrors the pool-exhausted response shape. The human-readable `message` appends the same reason in parentheses when present (see issue #486). Genuine upstream 429 responses are forwarded after runtime failover is exhausted.
 
 ---
 

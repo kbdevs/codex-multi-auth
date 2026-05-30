@@ -206,8 +206,8 @@ For remote or headless shells, prefer `codex-multi-auth login --device-auth`.
 
 ### Reliability behavior
 
-- whole-pool replay is disabled by default when every account is rate-limited
-- active requests use a bounded outbound request budget so one prompt cannot walk the full pool indefinitely
+- runtime forwarding retries every eligible account before giving up
+- local runtime forwarding does not create synthetic 429 cooldowns; genuine upstream 429 responses can still pass through after failover is exhausted
 - repeated cross-account 5xx bursts trigger a short cooldown instead of continuing aggressive rotation
 - proactive refresh is staggered to reduce background refresh bursts
 - `codex-multi-auth status` surfaces recent runtime request metrics in text output, and `codex-multi-auth report --json` exposes the machine-readable cooldown/runtime snapshot

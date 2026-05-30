@@ -649,13 +649,19 @@ export class AccountManager {
 		index: number,
 		family: ModelFamily,
 		model?: string | null,
+		options?: { ignoreRateLimits?: boolean },
 	): string | null {
 		const account = this.getAccountByIndex(index);
 		if (!account) return "missing";
 		if (account.enabled === false) return "disabled";
 		if (!this.hasEnabledWorkspaces(account)) return "workspace-disabled";
 		clearExpiredRateLimits(account);
-		if (isRateLimitedForFamily(account, family, model)) return "rate-limited";
+		if (
+			options?.ignoreRateLimits !== true &&
+			isRateLimitedForFamily(account, family, model)
+		) {
+			return "rate-limited";
+		}
 		if (this.isAccountCoolingDown(account)) {
 			return account.cooldownReason
 				? `cooling-down:${account.cooldownReason}`
@@ -808,7 +814,8 @@ export class AccountManager {
 				if (!this.hasEnabledWorkspaces(account)) return null;
 				clearExpiredRateLimits(account);
 				const isAvailable =
-					!isRateLimitedForFamily(account, family, model) &&
+					(options?.ignoreRateLimits === true ||
+						!isRateLimitedForFamily(account, family, model)) &&
 					!this.isAccountCoolingDown(account) &&
 					this.isCircuitAvailable(account);
 				return {

@@ -1,6 +1,6 @@
 {
 	"name": "codex-multi-auth",
-	"version": "2.1.13-beta.0",
+	"version": "2.1.13-kb.0",
 	"description": "Codex CLI multi-account OAuth manager with account switching, health checks, runtime rotation, diagnostics, and recovery tools for @openai/codex",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -42,7 +42,7 @@
 	"author": "ndycode",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/ndycode/codex-multi-auth.git"
+		"url": "git+https://github.com/kbdevs/codex-multi-auth.git"
 	},
 	"keywords": [
 		"openai",
@@ -73,9 +73,9 @@
 		"recovery-tools",
 		"project-scoped-storage"
 	],
-	"homepage": "https://github.com/ndycode/codex-multi-auth#readme",
+	"homepage": "https://github.com/kbdevs/codex-multi-auth#readme",
 	"bugs": {
-		"url": "https://github.com/ndycode/codex-multi-auth/issues"
+		"url": "https://github.com/kbdevs/codex-multi-auth/issues"
 	},
 	"scripts": {
 		"build": "tsc && node scripts/copy-oauth-success.js",

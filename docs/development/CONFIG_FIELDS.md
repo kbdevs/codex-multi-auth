@@ -65,9 +65,9 @@ Used only for host plugin mode through the host runtime config file.
 
 | Key | Default |
 | --- | --- |
-| `retryAllAccountsRateLimited` | `true` |
+| `retryAllAccountsRateLimited` | `false` |
 | `retryAllAccountsMaxWaitMs` | `0` |
-| `retryAllAccountsMaxRetries` | `Infinity` |
+| `retryAllAccountsMaxRetries` | `0` |
 | `unsupportedCodexPolicy` | `strict` |
 | `fallbackOnUnsupportedCodexModel` | `false` |
 | `fallbackToGpt52OnUnsupportedGpt53` | `true` |

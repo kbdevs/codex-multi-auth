@@ -11,7 +11,6 @@ import { getStoragePath } from "./storage.js";
 import {
 	getFetchTimeoutMs,
 	getNetworkErrorCooldownMs,
-	getRetryAllAccountsMaxRetries,
 	getServerErrorCooldownMs,
 	getSessionAffinity,
 	getSessionAffinityMaxEntries,
@@ -98,7 +97,6 @@ type ExhaustionReason =
 	| "server-error"
 	| "network-error"
 	| "auth-failure"
-	| "budget"
 	| "deactivated"
 	| "no-account";
 type RuntimeProxyHttpError = Error & {
@@ -114,9 +112,7 @@ interface RuntimeRotationAccountIdentity {
 }
 
 const DEFAULT_HOST = "127.0.0.1";
-const DEFAULT_QUOTA_REMAINING_THRESHOLD = 10;
 const DEFAULT_AUTH_FAILURE_COOLDOWN_MS = 30_000;
-const DEFAULT_MAX_RUNTIME_ACCOUNT_ATTEMPTS = 4;
 const MAX_REQUEST_BODY_BYTES = 64 * 1024 * 1024;
 const MAX_THREAD_GOAL_FALLBACKS = 512;
 const HOP_BY_HOP_HEADERS = new Set([
@@ -753,43 +749,6 @@ function resolveAccountId(account: ManagedAccount, accessToken: string): string 
 	return extractAccountId(accessToken)?.trim() || null;
 }
 
-function parseRetryAfterHeaderMs(headers: Headers, now: number): number | null {
-	const retryAfterMs = headers.get("retry-after-ms");
-	if (retryAfterMs) {
-		const parsed = Number.parseInt(retryAfterMs, 10);
-		if (Number.isFinite(parsed) && parsed > 0) return parsed;
-	}
-	const retryAfter = headers.get("retry-after");
-	if (!retryAfter) return null;
-	const asSeconds = Number.parseInt(retryAfter, 10);
-	if (Number.isFinite(asSeconds) && asSeconds > 0) return asSeconds * 1000;
-	const asDate = Date.parse(retryAfter);
-	if (Number.isFinite(asDate) && asDate > now) return asDate - now;
-	return null;
-}
-
-function parseRetryAfterBodyMs(bodyText: string, now: number): number | null {
-	if (!bodyText.trim()) return null;
-	try {
-		const parsed = JSON.parse(bodyText) as unknown;
-		if (!isRecord(parsed) || !isRecord(parsed.error)) return null;
-		const retryAfterMs = Number(parsed.error.retry_after_ms);
-		if (Number.isFinite(retryAfterMs) && retryAfterMs > 0) return retryAfterMs;
-		const retryAfterSeconds = Number(parsed.error.retry_after);
-		if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
-			return retryAfterSeconds * 1000;
-		}
-		const resetAtRaw = Number(parsed.error.resets_at ?? parsed.error.reset_at);
-		if (Number.isFinite(resetAtRaw) && resetAtRaw > 0) {
-			const resetAtMs = resetAtRaw < 10_000_000_000 ? resetAtRaw * 1000 : resetAtRaw;
-			if (resetAtMs > now) return resetAtMs - now;
-		}
-	} catch {
-		return null;
-	}
-	return null;
-}
-
 async function readErrorBody(response: Response): Promise<string> {
 	try {
 		return await response.text();
@@ -816,46 +775,6 @@ function extractErrorCodeFromBody(bodyText: string): string | null {
 	} catch {
 		return null;
 	}
-}
-
-function getQuotaWindowWaitMs(headers: Headers, prefix: string, now: number): number {
-	const resetAfterSeconds = Number.parseInt(
-		headers.get(`${prefix}-reset-after-seconds`) ?? "",
-		10,
-	);
-	if (Number.isFinite(resetAfterSeconds) && resetAfterSeconds > 0) {
-		return resetAfterSeconds * 1000;
-	}
-	const resetAtRaw = headers.get(`${prefix}-reset-at`);
-	if (!resetAtRaw) return 0;
-	const trimmed = resetAtRaw.trim();
-	let resetAtMs = 0;
-	if (/^\d+$/.test(trimmed)) {
-		const parsed = Number.parseInt(trimmed, 10);
-		if (Number.isFinite(parsed) && parsed > 0) {
-			resetAtMs = parsed < 10_000_000_000 ? parsed * 1000 : parsed;
-		}
-	} else {
-		const parsedDate = Date.parse(trimmed);
-		if (Number.isFinite(parsedDate)) resetAtMs = parsedDate;
-	}
-	return resetAtMs > now ? resetAtMs - now : 0;
-}
-
-function getQuotaNearExhaustionWaitMs(
-	headers: Headers,
-	remainingThreshold: number,
-	now: number,
-): number {
-	const usedThreshold = 100 - Math.max(0, Math.min(100, remainingThreshold));
-	const candidates: number[] = [];
-	for (const prefix of ["x-codex-primary", "x-codex-secondary"]) {
-		const used = Number(headers.get(`${prefix}-used-percent`) ?? "");
-		if (!Number.isFinite(used) || used < usedThreshold) continue;
-		const waitMs = getQuotaWindowWaitMs(headers, prefix, now);
-		if (waitMs > 0) candidates.push(waitMs);
-	}
-	return candidates.length > 0 ? Math.max(...candidates) : 0;
 }
 
 export function chooseAccount(params: {
@@ -908,6 +827,7 @@ export function chooseAccount(params: {
 			pinnedIndex,
 			family,
 			model,
+			{ ignoreRateLimits: true },
 		);
 		if (reason) {
 			skipReasons?.set(pinnedIndex, reason);
@@ -923,24 +843,25 @@ export function chooseAccount(params: {
 		!policy?.blockedAccountIndexes.has(preferredIndex)
 	) {
 		const preferred = accountManager.getAccountByIndex(preferredIndex);
-		if (
-			preferred) {
+		if (preferred) {
 			const reason = accountManager.getAccountRuntimeSkipReason(
 				preferred.index,
 				family,
 				model,
+				{ ignoreRateLimits: true },
 			);
 			if (reason) {
 				skipReasons?.set(preferred.index, reason);
 			} else {
-			accountManager.markSwitched(preferred, "rotation", family);
-			return preferred;
+				accountManager.markSwitched(preferred, "rotation", family);
+				return preferred;
 			}
 		}
 	}
 
 	const selected = accountManager.getCurrentOrNextForFamilyHybrid(family, model, {
 		scoreBoostByAccount: policy?.scoreBoostByAccount,
+		ignoreRateLimits: true,
 	});
 	if (
 		selected &&
@@ -951,6 +872,7 @@ export function chooseAccount(params: {
 			selected.index,
 			family,
 			model,
+			{ ignoreRateLimits: true },
 		);
 		if (!reason) return selected;
 		skipReasons?.set(selected.index, reason);
@@ -969,6 +891,7 @@ export function chooseAccount(params: {
 			account.index,
 			family,
 			model,
+			{ ignoreRateLimits: true },
 		);
 		if (!reason) {
 			const live = accountManager.getAccountByIndex(account.index);
@@ -1006,8 +929,14 @@ function writeUnauthorized(res: ServerResponse): void {
 	});
 }
 
-function normalizeExhaustionStatus(reason: ExhaustionReason): number {
-	return reason === "rate-limit" ? HTTP_STATUS.TOO_MANY_REQUESTS : 503;
+function writeUpstreamResponse(
+	res: ServerResponse,
+	status: number,
+	headers: Headers,
+	bodyText: string,
+): void {
+	res.writeHead(status, responseHeadersForClient(headers));
+	res.end(bodyText);
 }
 
 function writePoolExhausted(params: {
@@ -1031,7 +960,7 @@ function writePoolExhausted(params: {
 		reason === "no-account" && accountCount > 0
 			? "Accounts exist but all failed runtime availability checks. Run `codex-multi-auth report --json` to inspect runtime skip reasons, or `codex-multi-auth rotation reset-runtime` to reload the runtime proxy."
 			: "Run `codex-multi-auth rotation status` to inspect account state.";
-	writeJson(res, normalizeExhaustionStatus(reason), {
+	writeJson(res, HTTP_STATUS.SERVICE_UNAVAILABLE, {
 		error: {
 			message:
 				"All managed Codex accounts are temporarily unavailable for this runtime request.",
@@ -1182,15 +1111,8 @@ export async function startRuntimeRotationProxy(
 	const fetchTimeoutMs = options.fetchTimeoutMs ?? getFetchTimeoutMs(pluginConfig);
 	const streamStallTimeoutMs =
 		options.streamStallTimeoutMs ?? getStreamStallTimeoutMs(pluginConfig);
-	const configuredMaxRetries = getRetryAllAccountsMaxRetries(pluginConfig);
-	const maxRuntimeAccountAttempts =
-		configuredMaxRetries > 0
-			? configuredMaxRetries + 1
-			: DEFAULT_MAX_RUNTIME_ACCOUNT_ATTEMPTS;
 	const maxRequestBodyBytes =
 		options.maxRequestBodyBytes ?? MAX_REQUEST_BODY_BYTES;
-	const quotaRemainingPercentThreshold =
-		options.quotaRemainingPercentThreshold ?? DEFAULT_QUOTA_REMAINING_THRESHOLD;
 	const sessionAffinityStore = getSessionAffinity(pluginConfig)
 		? new SessionAffinityStore({
 				ttlMs: getSessionAffinityTtlMs(pluginConfig),
@@ -1356,17 +1278,18 @@ export async function startRuntimeRotationProxy(
 				upstreamBaseUrl,
 				context.upstreamPath,
 			);
-			const attemptedIndexes = new Set<number>();
-			let exhaustionReason: ExhaustionReason = "no-account";
-			let accountCount = accountManager.getAccountCount();
-			let transientAttemptLimit = Math.max(
-				1,
-				Math.min(accountCount, maxRuntimeAccountAttempts),
-			);
-			let transientAttempts = 0;
-			let transientExhaustionReason: ExhaustionReason | null = null;
-			const accountSkipReasons = new Map<number, string>();
-			let reloadedAfterNoAccount = false;
+				const attemptedIndexes = new Set<number>();
+				let exhaustionReason: ExhaustionReason = "no-account";
+				let accountCount = accountManager.getAccountCount();
+				let transientAttemptLimit = Math.max(1, accountCount);
+				let transientAttempts = 0;
+				let lastUpstreamRateLimit:
+					| { status: number; headers: Headers; bodyText: string; account: ManagedAccount }
+					| null = null;
+				let sawNonRateLimitFailure = false;
+				let transientExhaustionReason: ExhaustionReason | null = null;
+				const accountSkipReasons = new Map<number, string>();
+				let reloadedAfterNoAccount = false;
 
 			// Read the manual pin and affinity generation from disk (mtime-cached)
 			// on each request so a `codex-multi-auth switch|unpin|best` invocation
@@ -1419,10 +1342,7 @@ export async function startRuntimeRotationProxy(
 						if (reloadedManager) {
 							accountManager = reloadedManager;
 							accountCount = accountManager.getAccountCount();
-							transientAttemptLimit = Math.max(
-								1,
-								Math.min(accountCount, maxRuntimeAccountAttempts),
-							);
+							transientAttemptLimit = Math.max(1, accountCount);
 							accountSkipReasons.clear();
 							attemptedIndexes.clear();
 							continue;
@@ -1431,12 +1351,6 @@ export async function startRuntimeRotationProxy(
 					break;
 				}
 				attemptedIndexes.add(selected.index);
-
-				if (!accountManager.consumeToken(selected, context.family, context.model)) {
-					accountSkipReasons.set(selected.index, "token-exhausted");
-					exhaustionReason = "rate-limit";
-					continue;
-				}
 
 				const refreshed = await ensureFreshAccessToken({
 					accountManager,
@@ -1447,7 +1361,7 @@ export async function startRuntimeRotationProxy(
 					tokenRefreshSkewMs,
 				});
 				if (!refreshed.ok) {
-					accountManager.refundToken(selected, context.family, context.model);
+					sawNonRateLimitFailure = true;
 					exhaustionReason = "auth-failure";
 					if (!refreshed.retryable) continue;
 					transientAttempts += 1;
@@ -1459,7 +1373,7 @@ export async function startRuntimeRotationProxy(
 
 				const accountId = resolveAccountId(refreshed.account, refreshed.accessToken);
 				if (!accountId) {
-					accountManager.refundToken(refreshed.account, context.family, context.model);
+					sawNonRateLimitFailure = true;
 					accountManager.recordFailure(refreshed.account, context.family, context.model);
 					accountManager.markAccountCoolingDown(
 						refreshed.account,
@@ -1503,8 +1417,8 @@ export async function startRuntimeRotationProxy(
 						`upstream fetch timed out after ${fetchTimeoutMs}ms`,
 					);
 				} catch (error) {
+					sawNonRateLimitFailure = true;
 					status.lastError = error instanceof Error ? error.message : String(error);
-					accountManager.refundToken(refreshed.account, context.family, context.model);
 					accountManager.recordFailure(refreshed.account, context.family, context.model);
 					accountManager.markAccountCoolingDown(
 						refreshed.account,
@@ -1522,21 +1436,12 @@ export async function startRuntimeRotationProxy(
 
 				if (upstream.status === HTTP_STATUS.TOO_MANY_REQUESTS) {
 					const bodyText = await readErrorBody(upstream);
-					const retryAfterMs =
-						parseRetryAfterHeaderMs(upstream.headers, now()) ??
-						parseRetryAfterBodyMs(bodyText, now()) ??
-						60_000;
-					// A 429 is the upstream quota signal for the attempted account, so
-					// keep the consumed runtime token drained.
-					accountManager.recordRateLimit(refreshed.account, context.family, context.model);
-					accountManager.markRateLimitedWithReason(
-						refreshed.account,
-						retryAfterMs,
-						context.family,
-						"quota",
-						context.model,
-					);
-					accountManager.saveToDiskDebounced();
+					lastUpstreamRateLimit = {
+						status: upstream.status,
+						headers: upstream.headers,
+						bodyText,
+						account: refreshed.account,
+					};
 					exhaustionReason = "rate-limit";
 					transientAttempts += 1;
 					transientExhaustionReason = "rate-limit";
@@ -1549,14 +1454,10 @@ export async function startRuntimeRotationProxy(
 					const bodyText = await readErrorBody(upstream);
 					const errorCode = extractErrorCodeFromBody(bodyText);
 					if (isWorkspaceDisabledError(upstream.status, errorCode, bodyText)) {
+						sawNonRateLimitFailure = true;
 						const accountWasEnabled =
 							accountManager.getAccountByIndex(refreshed.account.index)?.enabled !==
 							false;
-						accountManager.refundToken(
-							refreshed.account,
-							context.family,
-							context.model,
-						);
 						if (accountWasEnabled) {
 							accountManager.recordFailure(
 								refreshed.account,
@@ -1643,8 +1544,8 @@ export async function startRuntimeRotationProxy(
 				}
 
 				if (upstream.status === HTTP_STATUS.UNAUTHORIZED) {
+					sawNonRateLimitFailure = true;
 					await readErrorBody(upstream);
-					accountManager.refundToken(refreshed.account, context.family, context.model);
 					accountManager.recordFailure(refreshed.account, context.family, context.model);
 					accountManager.markAccountCoolingDown(
 						refreshed.account,
@@ -1661,8 +1562,8 @@ export async function startRuntimeRotationProxy(
 				}
 
 				if (upstream.status >= 500) {
+					sawNonRateLimitFailure = true;
 					await readErrorBody(upstream);
-					accountManager.refundToken(refreshed.account, context.family, context.model);
 					accountManager.recordFailure(refreshed.account, context.family, context.model);
 					accountManager.markAccountCoolingDown(
 						refreshed.account,
@@ -1706,28 +1607,11 @@ export async function startRuntimeRotationProxy(
 				}
 
 				accountManager.recordSuccess(refreshed.account, context.family, context.model);
-				const nearExhaustionWaitMs = getQuotaNearExhaustionWaitMs(
-					upstream.headers,
-					quotaRemainingPercentThreshold,
+				sessionAffinityStore?.remember(
+					context.sessionKey,
+					refreshed.account.index,
 					now(),
 				);
-				if (nearExhaustionWaitMs > 0) {
-					accountManager.markRateLimitedWithReason(
-						refreshed.account,
-						nearExhaustionWaitMs,
-						context.family,
-						"quota",
-						context.model,
-					);
-					sessionAffinityStore?.forgetSession(context.sessionKey);
-					accountManager.saveToDiskDebounced();
-				} else {
-					sessionAffinityStore?.remember(
-						context.sessionKey,
-						refreshed.account.index,
-						now(),
-					);
-				}
 				await persistRuntimeActiveAccount(
 					accountManager,
 					refreshed.account,
@@ -1765,15 +1649,26 @@ export async function startRuntimeRotationProxy(
 			}
 
 			if (
-				transientAttempts >= transientAttemptLimit &&
-				attemptedIndexes.size < accountCount
-			) {
-				exhaustionReason = "budget";
-			} else if (
 				exhaustionReason === "deactivated" &&
 				transientExhaustionReason
 			) {
 				exhaustionReason = transientExhaustionReason;
+			}
+
+			if (lastUpstreamRateLimit && !sawNonRateLimitFailure) {
+				await usageRecorder?.record({
+					outcome: "failure",
+					statusCode: lastUpstreamRateLimit.status,
+					errorCode: "upstream_rate_limit",
+					account: lastUpstreamRateLimit.account,
+				});
+				writeUpstreamResponse(
+					res,
+					lastUpstreamRateLimit.status,
+					lastUpstreamRateLimit.headers,
+					lastUpstreamRateLimit.bodyText,
+				);
+				return;
 			}
 
 			// When a manual pin is set and the pinned account is unavailable, do
@@ -1803,7 +1698,7 @@ export async function startRuntimeRotationProxy(
 
 			await usageRecorder?.record({
 				outcome: "failure",
-				statusCode: normalizeExhaustionStatus(exhaustionReason),
+				statusCode: HTTP_STATUS.SERVICE_UNAVAILABLE,
 				errorCode: isThreadGoalRequest && context.upstreamPath.endsWith("/get") ? "thread_goal_pool_exhausted" : exhaustionReason,
 			});
 			if (isThreadGoalRequest && context.upstreamPath.endsWith("/get")) {

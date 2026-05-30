@@ -320,7 +320,7 @@ describe("issue #474 — manual pin honored by runtime proxy", () => {
 			expect(markSwitchedSpy).not.toHaveBeenCalled();
 		});
 
-		it("returns null when the pinned account is rate-limited (and does not fall through)", () => {
+		it("returns the pinned account when only a stored rate-limit timer would block it", () => {
 			const now = Date.now();
 			const storage = createStorage(now, 3);
 			const accountManager = new AccountManager(undefined, storage);
@@ -346,7 +346,7 @@ describe("issue #474 — manual pin honored by runtime proxy", () => {
 				pinnedIndex: 1,
 			});
 
-			expect(result).toBeNull();
+			expect(result?.index).toBe(1);
 		});
 
 		it("returns null when the pinned account is cooling down", () => {
@@ -466,7 +466,7 @@ describe("issue #474 — manual pin honored by runtime proxy", () => {
 	// Issue #486: chooseAccount must record a skip reason for every pinned
 	// unavailability path so the runtime proxy can surface it in the 503 body.
 	describe("chooseAccount populates skipReasons for pinned unavailability", () => {
-		it("records 'rate-limited' when the pinned account is rate-limited", () => {
+		it("does not record a skip reason when the pinned account only has a stored rate-limit timer", () => {
 			const now = Date.now();
 			const storage = createStorage(now, 3);
 			const accountManager = new AccountManager(undefined, storage);
@@ -493,8 +493,8 @@ describe("issue #474 — manual pin honored by runtime proxy", () => {
 				skipReasons,
 			});
 
-			expect(result).toBeNull();
-			expect(skipReasons.get(1)).toBe("rate-limited");
+			expect(result?.index).toBe(1);
+			expect(skipReasons.has(1)).toBe(false);
 		});
 
 		it("records 'cooling-down:auth-failure' when the pinned account is cooling down", () => {
@@ -822,4 +822,3 @@ describe("issue #474 — manual pin honored by runtime proxy", () => {
 		});
 	});
 });
-

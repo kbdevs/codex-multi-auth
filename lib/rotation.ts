@@ -374,6 +374,7 @@ export const DEFAULT_HYBRID_SELECTION_CONFIG: HybridSelectionConfig = {
 export interface HybridSelectionOptions {
 	pidOffsetEnabled?: boolean;
 	scoreBoostByAccount?: Record<number, number>;
+	ignoreRateLimits?: boolean;
 }
 
 /**

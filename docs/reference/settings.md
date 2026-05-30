@@ -147,9 +147,9 @@ Named backup behavior:
 | `preemptiveQuotaRemainingPercent5h` | `5` | 5-hour quota threshold |
 | `preemptiveQuotaRemainingPercent7d` | `5` | 7-day quota threshold |
 | `preemptiveQuotaMaxDeferralMs` | `7200000` | Maximum quota-based deferral window |
-| `retryAllAccountsRateLimited` | `true` | Retry across the whole pool when all accounts are rate-limited |
+| `retryAllAccountsRateLimited` | `false` | Retry across the whole pool when all accounts are rate-limited in non-runtime retry paths |
 | `retryAllAccountsMaxWaitMs` | `0` | Maximum wait budget for all-accounts-rate-limited retries |
-| `retryAllAccountsMaxRetries` | `Infinity` | Maximum retry attempts for all-accounts-rate-limited loops |
+| `retryAllAccountsMaxRetries` | `0` | Maximum retry attempts for all-accounts-rate-limited loops |
 
 ### Refresh & Recovery
 
