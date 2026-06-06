@@ -24,13 +24,14 @@ User-facing capability map for Codex CLI multi-account OAuth, ChatGPT account sw
 | Readiness and risk forecast | Suggests the best next account | `codex-multi-auth forecast` |
 | Live quota probe mode | Uses live headers for stronger decisions | `codex-multi-auth forecast --live` |
 | JSON report output | Lets you inspect account state in automation or support workflows | `codex-multi-auth report --live --json` |
-| Runtime rotation proxy (default-on) | Lets forwarded official Codex CLI/app sessions rotate managed accounts between Responses requests without restarting the session. Disable per install when needed. | `codex-multi-auth rotation status` |
+| Native wrapper account homes | Keeps forwarded official Codex CLI sessions on normal ChatGPT auth using the selected managed account. | `codex-multi-auth status` |
+| Runtime rotation proxy (opt-in) | Lets forwarded official Codex CLI/app sessions rotate managed accounts between Responses requests without restarting the session when explicitly enabled. | `codex-multi-auth rotation status` |
 
 ---
 
 ## Rotate Live Codex Runtime Requests
 
-Runtime rotation is part of the current architecture. It is default-on and local-only.
+Runtime rotation is part of the current architecture. It is opt-in and local-only.
 
 | Capability | What it gives you | Primary entry |
 | --- | --- | --- |

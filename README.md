@@ -5,9 +5,9 @@
 [![CI](https://github.com/ndycode/codex-multi-auth/actions/workflows/ci.yml/badge.svg)](https://github.com/ndycode/codex-multi-auth/actions/workflows/ci.yml)
 [![MIT license](https://img.shields.io/npm/l/codex-multi-auth.svg)](LICENSE)
 
-`codex-multi-auth` is a multi-account OAuth manager for the official `@openai/codex` CLI. It gives Codex CLI users explicit ChatGPT account login, account switching, health checks, local diagnostics, project-scoped storage, and default-on runtime Responses rotation without taking over the official `codex` binary. Use `codex-multi-auth ...` for account management, or `codex-multi-auth-codex ...` only when you intentionally want the optional forwarding wrapper.
+`codex-multi-auth` is a multi-account OAuth manager for the official `@openai/codex` CLI. It gives Codex CLI users explicit ChatGPT account login, account switching, health checks, local diagnostics, project-scoped storage, and optional runtime Responses rotation without taking over the official `codex` binary. Use `codex-multi-auth ...` for account management, or `codex-multi-auth-codex ...` only when you intentionally want the optional forwarding wrapper.
 
-Use it when you need a local Codex CLI multi-account workflow with visible account state, safer recovery commands, and a loopback-only runtime rotation proxy for request-bearing forwarded Codex sessions.
+Use it when you need a local Codex CLI multi-account workflow with visible account state, safer recovery commands, native wrapper-launched Codex auth homes, and an opt-in loopback-only runtime rotation proxy for request-bearing forwarded Codex sessions.
 
 <img width="1270" height="729" alt="codex-multi-auth terminal dashboard for Codex CLI multi-account OAuth account status" src="https://github.com/user-attachments/assets/0cecb77e-a6d3-432a-ba48-3577db0c7093" />
 
@@ -28,7 +28,8 @@ Use it when you need a local Codex CLI multi-account workflow with visible accou
 - Forecast, report, fix, doctor, verify, monitor, and rotation commands for operational confidence
 - Local usage ledger, budget guards, account policy controls, routing profiles, and model/account capability views
 - Runtime counters, budget/cooldown state, and multi-auth probe visibility in `codex-multi-auth status` / `codex-multi-auth report`
-- Default-on loopback Responses proxy for live account rotation inside forwarded Codex CLI/app sessions
+- Native per-account Codex homes for wrapper-launched sessions, preserving the official ChatGPT auth path by default
+- Opt-in loopback Responses proxy for live account rotation inside forwarded Codex CLI/app sessions
 - Optional loopback-only local bridge for `/health`, `/v1/models`, and `/v1/responses`, protected by hashed local client tokens
 - Reversible packaged Codex app bind and user-level launcher routing helpers that do not patch official app binaries
 - Session affinity, live account sync, proactive refresh, and preemptive quota deferral controls
@@ -295,7 +296,7 @@ codex-multi-auth forecast --live
 
 Responses background mode stays opt-in. Enable `backgroundResponses` in settings or `CODEX_AUTH_BACKGROUND_RESPONSES=1` only for callers that intentionally send `background: true`, because those requests switch from stateless `store=false` routing to stateful `store=true`. See [docs/upgrade.md](docs/upgrade.md) for rollout guidance.
 
-Runtime rotation is enabled by default for request-bearing wrapper-launched Codex sessions. Global install/update self-heals supported packaged Codex app binds and user-level launcher routing when possible, while `codex-multi-auth rotation enable` remains the explicit repair command. `codex-multi-auth rotation disable` turns the setting off and removes the persistent app bind. Set `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=0`, `CODEX_MULTI_AUTH_APP_BIND_INSTALL=0`, or `CODEX_MULTI_AUTH_APP_LAUNCHER_INSTALL=0` to opt out of the matching default behavior.
+Runtime rotation is opt-in for request-bearing wrapper-launched Codex sessions. By default the wrapper prepares a native selected-account `CODEX_HOME` and keeps Codex on normal ChatGPT auth. Run `codex-multi-auth rotation enable`, set `codexRuntimeRotationProxy=true`, or set `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=1` when you intentionally want the localhost Responses proxy and packaged app bind path. `codex-multi-auth rotation disable` turns the setting off and removes the persistent app bind.
 
 Installed wrappers may perform a best-effort daily npm version check during normal forwarded Codex startup. When a newer package is detected, the wrapper only prints a manual notice on an interactive TTY or when `CODEX_MULTI_AUTH_DEBUG=1`: `npm install -g codex-multi-auth@latest`. It never runs npm install or update commands for you.
 
@@ -383,8 +384,9 @@ codex-multi-auth doctor --json
 
 ## Release Notes
 
+- Current local fork: [docs/releases/v2.1.13-kb.0.md](docs/releases/v2.1.13-kb.0.md)
 - Current prerelease: [docs/releases/v2.1.13-beta.0.md](docs/releases/v2.1.13-beta.0.md) — install via `npm i -g codex-multi-auth@beta`
-- Current stable: [docs/releases/v2.1.12.md](docs/releases/v2.1.12.md)
+- Prior stable: [docs/releases/v2.1.12.md](docs/releases/v2.1.12.md)
 - Previous stable: [docs/releases/v2.1.11.md](docs/releases/v2.1.11.md)
 - Earlier stable: [docs/releases/v2.1.10.md](docs/releases/v2.1.10.md)
 - Earlier stable: [docs/releases/v2.1.8.md](docs/releases/v2.1.8.md)

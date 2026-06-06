@@ -29,7 +29,7 @@ Stable APIs are covered by semver compatibility guarantees and must remain backw
 - CLI surface:
   - `codex-multi-auth ...` command family
   - documented flags and aliases in `reference/commands.md`
-  - default-on `codex-multi-auth rotation ...` command family for runtime Responses proxy and app bind management
+  - opt-in `codex-multi-auth rotation ...` command family for runtime Responses proxy and app bind management
 - Persistent user-facing config and storage contracts documented in:
   - `reference/settings.md`
   - `reference/storage-paths.md`
@@ -105,7 +105,7 @@ These behaviors are compatibility guarantees for the current release line becaus
 
 Runtime rotation is a CLI/runtime feature, not a library transport API.
 
-- It is enabled by default for request-bearing wrapper-launched Codex sessions.
+- It is disabled by default for request-bearing wrapper-launched Codex sessions; the default wrapper path uses native selected-account Codex homes.
 - `codex-multi-auth rotation enable` persists `pluginConfig.codexRuntimeRotationProxy=true`.
 - `codex-multi-auth rotation disable` persists `pluginConfig.codexRuntimeRotationProxy=false`.
 - `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=0` disables the proxy for the current process without changing settings.

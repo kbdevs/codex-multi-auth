@@ -46,7 +46,7 @@ codex-multi-auth doctor --fix
 - Canonical package: `codex-multi-auth`
 - Canonical command family: `codex-multi-auth ...`
 - Canonical storage root: `~/.codex/multi-auth`
-- Runtime rotation: default-on, inspect or repair with `codex-multi-auth rotation status`
+- Runtime rotation: opt-in, inspect or repair with `codex-multi-auth rotation status`
 
 Legacy migration details live in [upgrade.md](upgrade.md).
 

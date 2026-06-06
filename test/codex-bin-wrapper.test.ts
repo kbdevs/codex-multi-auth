@@ -27,7 +27,10 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { afterEach, describe, expect, it } from "vitest";
 import { RUNTIME_ROTATION_PROXY_PROVIDER_ID } from "../lib/runtime-constants.js";
 import { sleep } from "../lib/utils.js";
-import { resolveRealCodexBin } from "../scripts/codex-bin-resolver.js";
+import {
+	resolveRealCodexBin,
+	splitPathEntries,
+} from "../scripts/codex-bin-resolver.js";
 
 const createdDirs: string[] = [];
 const testFileDir = dirname(fileURLToPath(import.meta.url));
@@ -317,6 +320,52 @@ function createRuntimeRotationProxyFixtureModule(fixtureRoot: string): string {
 			"    close: async () => appendMarker('close'),",
 			"    getStatus: () => buildStatus(),",
 			"  };",
+			"}",
+		].join("\n"),
+		"utf8",
+	);
+	return modulePath;
+}
+
+function createNativeCodexHomeFixtureModule(fixtureRoot: string): string {
+	const runtimeDir = join(fixtureRoot, "dist", "lib", "runtime");
+	mkdirSync(runtimeDir, { recursive: true });
+	const modulePath = join(runtimeDir, "native-account-home.js");
+	writeFileSync(
+		modulePath,
+		[
+			'import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";',
+			'import { join } from "node:path";',
+			"",
+			"function sanitizeConfig(rawConfig) {",
+			"  const lines = rawConfig.split(/\\r?\\n/);",
+			"  const output = [];",
+			"  let skipping = false;",
+			"  for (const line of lines) {",
+			"    const trimmed = line.trim();",
+			"    if (/^\\[\\s*model_providers\\s*\\.\\s*(?:\"codex-multi-auth-runtime-proxy\"|codex-multi-auth-runtime-proxy)\\s*\\]\\s*$/.test(trimmed)) {",
+			"      skipping = true;",
+			"      continue;",
+			"    }",
+			"    if (skipping && /^\\[/.test(trimmed)) skipping = false;",
+			"    if (skipping) continue;",
+			"    if (/^\\s*model_provider\\s*=\\s*[\"']codex-multi-auth-runtime-proxy[\"']/.test(line)) continue;",
+			"    output.push(line);",
+			"  }",
+			"  return `${output.join('\\n').replace(/\\n{3,}/g, '\\n\\n').replace(/\\n*$/, '')}\\n`;",
+			"}",
+			"",
+			"export async function prepareNativeCodexHomeContext(context) {",
+			"  const originalHome = context.originalCodexHome || context.env.CODEX_HOME;",
+			"  const multiAuthDir = context.env.CODEX_MULTI_AUTH_DIR || join(originalHome, 'multi-auth');",
+			"  const nativeHome = join(multiAuthDir, 'native-homes', 'account-fixture');",
+			"  mkdirSync(nativeHome, { recursive: true });",
+			"  const sourceConfigPath = join(context.env.CODEX_HOME || originalHome, 'config.toml');",
+			"  const rawConfig = existsSync(sourceConfigPath) ? readFileSync(sourceConfigPath, 'utf8') : '';",
+			"  writeFileSync(join(nativeHome, 'config.toml'), sanitizeConfig(rawConfig), 'utf8');",
+			"  writeFileSync(join(nativeHome, 'auth.json'), JSON.stringify({ auth_mode: 'chatgpt', email: 'fixture@example.com', OPENAI_API_KEY: null, tokens: { access_token: 'access-fixture', refresh_token: 'refresh-fixture', account_id: 'acct-fixture' } }, null, 2), 'utf8');",
+			"  writeFileSync(join(nativeHome, 'accounts.json'), JSON.stringify({ activeAccountId: 'acct-fixture', accounts: [{ accountId: 'acct-fixture', email: 'fixture@example.com', active: true }] }, null, 2), 'utf8');",
+			"  return { ...context, env: { ...context.env, CODEX_HOME: nativeHome, CODEX_MULTI_AUTH_DIR: multiAuthDir, CODEX_CLI_AUTH_PATH: join(nativeHome, 'auth.json'), CODEX_CLI_ACCOUNTS_PATH: join(nativeHome, 'accounts.json'), CODEX_CLI_CONFIG_PATH: join(nativeHome, 'config.toml') }, nativeCodexHome: nativeHome };",
 			"}",
 		].join("\n"),
 		"utf8",
@@ -1155,6 +1204,73 @@ describe("codex bin wrapper", () => {
 		expect(result.status).toBe(0);
 		expect(result.stdout).toContain(
 			'FORWARDED:exec status -c cli_auth_credentials_store="file"',
+		);
+	});
+
+	it("uses native Codex account homes by default instead of the runtime proxy", () => {
+		const fixtureRoot = createWrapperFixture();
+		createRuntimeRotationProxyFixtureModule(fixtureRoot);
+		createNativeCodexHomeFixtureModule(fixtureRoot);
+		const fakeBin = createCustomFakeCodexBin(fixtureRoot, [
+			"#!/usr/bin/env node",
+			'const fs = require("node:fs");',
+			'const path = require("node:path");',
+			'console.log(`FORWARDED:${process.argv.slice(2).join(" ")}`);',
+			'console.log(`CODEX_HOME:${process.env.CODEX_HOME ?? ""}`);',
+			'console.log(`CODEX_HOME_IS_ORIGINAL:${process.env.CODEX_HOME === process.env.ORIGINAL_CODEX_HOME}`);',
+			'console.log(`OPENAI_API_KEY:${process.env.OPENAI_API_KEY ?? ""}`);',
+			'console.log(`AUTH_EXISTS:${fs.existsSync(path.join(process.env.CODEX_HOME ?? "", "auth.json"))}`);',
+			'console.log(`ACCOUNTS_EXISTS:${fs.existsSync(path.join(process.env.CODEX_HOME ?? "", "accounts.json"))}`);',
+			'console.log("CONFIG_START");',
+			'console.log(fs.readFileSync(path.join(process.env.CODEX_HOME ?? "", "config.toml"), "utf8").trim());',
+			'console.log("CONFIG_END");',
+			"process.exit(0);",
+		]);
+		const originalHome = join(fixtureRoot, "codex-home");
+		const markerPath = join(fixtureRoot, "proxy-marker.txt");
+		mkdirSync(originalHome, { recursive: true });
+		writeFileSync(
+			join(originalHome, "config.toml"),
+			[
+				'model = "gpt-5-codex"',
+				'model_provider = "openai"',
+				"",
+				"[model_providers.openai]",
+				'name = "OpenAI"',
+				'base_url = "https://api.openai.com/v1"',
+				"",
+				`[model_providers.${RUNTIME_ROTATION_PROXY_PROVIDER_ID}]`,
+				'name = "stale proxy"',
+				'base_url = "http://127.0.0.1:1"',
+			].join("\n"),
+			"utf8",
+		);
+
+		const result = runWrapper(fixtureRoot, ["exec", "status"], {
+			CODEX_MULTI_AUTH_REAL_CODEX_BIN: fakeBin,
+			CODEX_HOME: originalHome,
+			ORIGINAL_CODEX_HOME: originalHome,
+			CODEX_MULTI_AUTH_TEST_PROXY_MARKER: markerPath,
+			OPENAI_API_KEY: undefined,
+		});
+
+		const output = combinedOutput(result);
+		expect(result.status).toBe(0);
+		expect(output).toContain(
+			'FORWARDED:exec status -c cli_auth_credentials_store="file"',
+		);
+		expect(output).not.toContain(`model_provider="${RUNTIME_ROTATION_PROXY_PROVIDER_ID}"`);
+		expect(output).toContain("CODEX_HOME_IS_ORIGINAL:false");
+		expect(output).toContain("OPENAI_API_KEY:");
+		expect(output).toContain("AUTH_EXISTS:true");
+		expect(output).toContain("ACCOUNTS_EXISTS:true");
+		expect(output).not.toContain(`model_provider = "${RUNTIME_ROTATION_PROXY_PROVIDER_ID}"`);
+		expect(output).not.toContain(`[model_providers.${RUNTIME_ROTATION_PROXY_PROVIDER_ID}]`);
+		expect(output).not.toContain('base_url = "http://127.0.0.1:1"');
+		expect(existsSync(markerPath)).toBe(false);
+		const nativeHomeMatch = output.match(/^CODEX_HOME:(.+)$/m);
+		expect(nativeHomeMatch?.[1]).toBe(
+			join(originalHome, "multi-auth", "native-homes", "account-fixture"),
 		);
 	});
 
@@ -4223,6 +4339,23 @@ describe("codex bin wrapper", () => {
 			path: nativeCodexPath,
 			launchWithNode: false,
 		});
+	});
+
+	it("preserves Windows drive colons when splitting POSIX-host PATH fixtures", () => {
+		expect(
+			splitPathEntries(
+				[
+					"C:\\test-root\\npm\\bin",
+					"C:\\test-root\\native\\bin",
+					"/usr/local/bin",
+				].join(":"),
+				"linux",
+			),
+		).toEqual([
+			"C:\\test-root\\npm\\bin",
+			"C:\\test-root\\native\\bin",
+			"/usr/local/bin",
+		]);
 	});
 
 	it("accepts Windows native codex paths without an .exe suffix", () => {

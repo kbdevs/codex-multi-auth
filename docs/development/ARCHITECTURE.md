@@ -1,6 +1,6 @@
 # Architecture
 
-Runtime architecture for the Codex CLI wrapper, local OAuth account manager, default-on Responses rotation proxy, and optional plugin-host bridge.
+Runtime architecture for the Codex CLI wrapper, local OAuth account manager, native account homes, opt-in Responses rotation proxy, and optional plugin-host bridge.
 
 * * *
 
@@ -172,7 +172,7 @@ Official Codex-owned files remain under `~/.codex`, including `auth.json`, `acco
 2. Dist folder is generated output only.
 3. Non-auth `codex-multi-auth-codex` commands forward to official Codex unless the command is intentionally handled by the local auth manager.
 4. Canonical account-management commands remain `codex-multi-auth ...`.
-5. Runtime rotation is default-on and loopback-only.
+5. Runtime rotation is opt-in and loopback-only.
 6. Runtime proxy client authentication uses a local per-process token.
 7. Runtime proxy client responses must not include account emails, auth tokens, or stale decoded content-encoding metadata.
 8. Packaged app bind must be reversible and must not patch official app binaries.

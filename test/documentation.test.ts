@@ -570,13 +570,13 @@ describe("Documentation Integrity", () => {
 		expect(packageJson.license).toBe("MIT");
 		expect(packageJson.repository).toEqual({
 			type: "git",
-			url: "git+https://github.com/ndycode/codex-multi-auth.git",
+			url: "git+https://github.com/kbdevs/codex-multi-auth.git",
 		});
 		expect(packageJson.homepage).toBe(
-			"https://github.com/ndycode/codex-multi-auth#readme",
+			"https://github.com/kbdevs/codex-multi-auth#readme",
 		);
 		expect(packageJson.bugs).toEqual({
-			url: "https://github.com/ndycode/codex-multi-auth/issues",
+			url: "https://github.com/kbdevs/codex-multi-auth/issues",
 		});
 		expect(packageJson.bin).toEqual({
 			"codex-multi-auth-app-launcher": "scripts/codex-app-launcher.js",

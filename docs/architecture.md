@@ -12,8 +12,8 @@ Public overview of how the `codex-multi-auth` multi-account OAuth manager fits a
 - `codex-multi-auth-codex ...` is the optional wrapper entrypoint for forwarding official Codex CLI commands.
 - The package does not publish a global `codex` binary; that name stays owned by the official Codex install path.
 - Account, settings, quota, backup, and diagnostic state lives under `~/.codex/multi-auth`.
-- Runtime rotation is enabled by default for request-bearing sessions launched through this package's wrapper or app bind.
-- When runtime rotation is enabled, forwarded Codex CLI/app sessions can send Responses traffic through a localhost-only proxy that selects managed accounts per request.
+- Wrapper-launched request sessions use native selected-account Codex homes by default.
+- When runtime rotation is explicitly enabled, forwarded Codex CLI/app sessions can send Responses traffic through a localhost-only proxy that selects managed accounts per request.
 - The plugin-host entrypoint remains available for advanced host integrations, but it is not required for normal CLI use.
 
 ---
@@ -52,11 +52,15 @@ The wrapper also keeps forwarded official Codex sessions on file-backed auth sta
 
 Account and settings data live under `~/.codex/multi-auth`, with optional project-scoped pools under `projects/<project-key>/`.
 
-The account manager can sync the selected account into the official Codex CLI files under `~/.codex` so regular forwarded Codex commands keep using the intended account.
+The account manager can sync the selected account into official Codex CLI auth-file shapes. Wrapper-launched commands use persistent per-account native homes under `~/.codex/multi-auth/native-homes/` by default, so they keep Codex on its normal ChatGPT auth path without rewriting the global `~/.codex` state for every launch.
 
-### 4. Runtime rotation proxy
+### 4. Native wrapper auth homes
 
-When `codexRuntimeRotationProxy` is enabled, the wrapper starts a loopback Responses-compatible proxy and writes a temporary shadow `CODEX_HOME/config.toml` that selects the local provider:
+For request-bearing wrapper launches, `codex-multi-auth-codex` prepares a selected-account native `CODEX_HOME` containing `auth.json`, `accounts.json`, and a sanitized `config.toml`. Stale `codex-multi-auth-runtime-proxy` provider config is stripped from that native home. The official Codex CLI then runs with normal ChatGPT auth semantics.
+
+### 5. Runtime rotation proxy
+
+When `codexRuntimeRotationProxy` is explicitly enabled, the wrapper starts a loopback Responses-compatible proxy and writes a temporary shadow `CODEX_HOME/config.toml` that selects the local provider:
 
 `codex-multi-auth-runtime-proxy`
 
@@ -69,7 +73,7 @@ The proxy:
 - strips hop-by-hop and stale decoded response headers before returning data to the local Codex client
 - records runtime status for `codex-multi-auth status`, `codex-multi-auth report`, and `codex-multi-auth rotation status`
 
-### 5. Codex desktop app support
+### 6. Codex desktop app support
 
 `codex-multi-auth rotation enable` can bind a packaged Codex desktop app to the same local runtime-rotation path.
 
@@ -129,7 +133,20 @@ scripts/codex.js
 Official Codex CLI
 ```
 
-Default runtime rotation path:
+Default wrapper path:
+
+```text
+Terminal user
+  |
+  v
+codex-multi-auth-codex wrapper
+  |
+  | selected account native CODEX_HOME
+  v
+Official Codex CLI ChatGPT auth
+```
+
+Opt-in runtime rotation path:
 
 ```text
 Terminal user or Codex app
@@ -165,7 +182,7 @@ Codex or ChatGPT-backed request flow with refresh, retry, and failover
 - The official OAuth flow remains the source of authentication.
 - The canonical command family is `codex-multi-auth ...`.
 - The OAuth callback port remains `1455`.
-- Runtime rotation is default-on and localhost-only.
+- Runtime rotation is opt-in and localhost-only.
 - The desktop app bind is reversible and does not patch official app files.
 - Local storage and repair tooling are designed for personal operator workflows, not hosted multi-user services.
 

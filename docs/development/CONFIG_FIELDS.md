@@ -46,12 +46,12 @@ Used only for host plugin mode through the host runtime config file.
 | Key | Default |
 | --- | --- |
 | `codexMode` | `true` |
-| `codexRuntimeRotationProxy` | `true` |
+| `codexRuntimeRotationProxy` | `false` |
 | `codexTuiV2` | `true` |
 | `codexTuiColorProfile` | `truecolor` |
 | `codexTuiGlyphMode` | `ascii` |
 
-`codexRuntimeRotationProxy` enables the wrapper/app local Responses proxy path. It is enabled by default and can be overridden per process with `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY`.
+`codexRuntimeRotationProxy` enables the wrapper/app local Responses proxy path. It is disabled by default; wrapper-launched sessions use native selected-account Codex homes unless this setting or `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=1` opts into the proxy.
 
 ### Fast Session
 

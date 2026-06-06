@@ -52,14 +52,32 @@ function resolveWindowsCmdPath(env) {
 	return "cmd.exe";
 }
 
-export function splitPathEntries(pathValue) {
+export function splitPathEntries(pathValue, platform = process.platform) {
 	if (typeof pathValue !== "string" || pathValue.trim().length === 0) {
 		return [];
 	}
-	return pathValue
-		.split(delimiter)
-		.map((entry) => entry.trim())
-		.filter((entry) => entry.length > 0);
+	const pathDelimiter = platform === "win32" ? ";" : delimiter;
+	const entries = [];
+	let current = "";
+	for (let index = 0; index < pathValue.length; index += 1) {
+		const character = pathValue[index];
+		const currentEntryPrefix = current.trim();
+		const isWindowsDriveColon =
+			pathDelimiter === ":" &&
+			character === ":" &&
+			/^[A-Za-z]$/.test(currentEntryPrefix) &&
+			(pathValue[index + 1] === "\\" || pathValue[index + 1] === "/");
+		if (character === pathDelimiter && !isWindowsDriveColon) {
+			const trimmed = current.trim();
+			if (trimmed.length > 0) entries.push(trimmed);
+			current = "";
+			continue;
+		}
+		current += character;
+	}
+	const trimmed = current.trim();
+	if (trimmed.length > 0) entries.push(trimmed);
+	return entries;
 }
 
 function resolvePathExecutableName(platform) {
@@ -113,7 +131,7 @@ function resolveCodexExecutableFromSystemPath(
 	selfScriptPath,
 	realpathSyncImpl,
 ) {
-	const pathEntries = splitPathEntries(env.PATH ?? env.Path ?? "");
+	const pathEntries = splitPathEntries(env.PATH ?? env.Path ?? "", platform);
 	const fromEnvPath = resolveCodexExecutableFromPath(
 		pathEntries,
 		platform,

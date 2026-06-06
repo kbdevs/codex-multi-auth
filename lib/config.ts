@@ -154,7 +154,7 @@ function resolvePluginConfigPath(): string | null {
  */
 export const DEFAULT_PLUGIN_CONFIG: PluginConfig = {
 	codexMode: true,
-	codexRuntimeRotationProxy: true,
+	codexRuntimeRotationProxy: false,
 	codexTuiV2: true,
 	codexTuiColorProfile: "truecolor",
 	codexTuiGlyphMode: "ascii",
@@ -792,7 +792,7 @@ export function getCodexRuntimeRotationProxy(
 	return resolveBooleanSetting(
 		"CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY",
 		pluginConfig.codexRuntimeRotationProxy,
-		true,
+		false,
 	);
 }
 

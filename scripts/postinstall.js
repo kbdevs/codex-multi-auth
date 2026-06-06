@@ -210,7 +210,7 @@ export function resolveRotationEnabled(configModule, env = process.env) {
 		typeof configModule.loadPluginConfig !== "function" ||
 		typeof configModule.getCodexRuntimeRotationProxy !== "function"
 	) {
-		return true;
+		return false;
 	}
 	return (
 		configModule.getCodexRuntimeRotationProxy(configModule.loadPluginConfig()) ===

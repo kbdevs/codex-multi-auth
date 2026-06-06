@@ -6,7 +6,7 @@ GitHub-facing audit and recommended presentation for `codex-multi-auth`.
 
 ## Product Summary
 
-- Purpose: provide a Codex CLI multi-account OAuth manager, `codex-multi-auth ...` workflow, explicit account switching, health checks, diagnostics, recovery tooling, and default-on runtime Responses rotation proxy for forwarded official `@openai/codex` CLI/app sessions
+- Purpose: provide a Codex CLI multi-account OAuth manager, `codex-multi-auth ...` workflow, explicit account switching, health checks, diagnostics, recovery tooling, native wrapper account homes, and opt-in runtime Responses rotation proxy for forwarded official `@openai/codex` CLI/app sessions
 - Target users: individual developers using the Codex CLI who want visible local account state, explicit account switching, health checks, quota-aware forecasts, local recovery tooling, optional project-scoped account pools, and live runtime rotation
 - Not the target: commercial multi-user services, generic API users, or teams looking for a hosted auth layer
 
@@ -162,6 +162,6 @@ Before:
 After:
 
 - README opens with a descriptive title, what the project is, why it exists, and how to start quickly
-- the wrapper-plus-manager use case is primary, runtime rotation is default-on with explicit opt-out, and plugin-host mode is clearly positioned as optional
+- the wrapper-plus-manager use case is primary, runtime rotation is opt-in, and plugin-host mode is clearly positioned as optional
 - public docs have a simpler path from install to FAQ to architecture to troubleshooting
 - release and metadata guidance is explicit and current

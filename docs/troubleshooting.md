@@ -81,7 +81,7 @@ The package does not publish a global `codex` binary. `codex-multi-auth ...` is 
 | Model speed controls are not visible with rotation | Speed/reasoning controls remain owned by Codex config or CLI flags; the app bind only routes Responses traffic | Set `model_reasoning_effort` in `~/.codex/config.toml` or pass `-c model_reasoning_effort=<level>` for wrapper-launched CLI sessions |
 | App bind needs to be removed | You want the official app config restored | Run `codex-multi-auth rotation unbind-app` or `codex-multi-auth rotation disable` |
 
-The runtime proxy is loopback-only and default-on. It routes Responses traffic only for forwarded request-bearing official Codex sessions and supported app launches.
+The runtime proxy is loopback-only and opt-in. It routes Responses traffic only for forwarded request-bearing official Codex sessions and supported app launches when runtime rotation is enabled.
 
 ---
 

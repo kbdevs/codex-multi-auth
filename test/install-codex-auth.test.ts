@@ -536,9 +536,9 @@ describe("codex app bind postinstall gate", () => {
 		// package installs stay side-effect-free in automation.
 	});
 
-	it("resolves runtime rotation as default-on for install/update self-heal", () => {
-		expect(resolveRotationEnabled(null, {})).toBe(true);
-		expect(resolveRotationEnabled({}, {})).toBe(true);
+	it("resolves runtime rotation as opt-in for install/update self-heal", () => {
+		expect(resolveRotationEnabled(null, {})).toBe(false);
+		expect(resolveRotationEnabled({}, {})).toBe(false);
 		expect(
 			resolveRotationEnabled(null, {
 				CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY: "0",
@@ -619,8 +619,8 @@ describe("codex app bind postinstall gate", () => {
 			}),
 		).resolves.toBe(0);
 
-		expect(bindCodexApp).toHaveBeenCalledWith(true);
-		expect(installLauncher).toHaveBeenCalledWith(true);
+		expect(bindCodexApp).toHaveBeenCalledWith(false);
+		expect(installLauncher).toHaveBeenCalledWith(false);
 		expect(log).toHaveBeenCalledWith(
 			"app launcher postinstall skipped: launcher failed",
 		);

@@ -5,7 +5,7 @@ Commit: a87e005
 
 ## OVERVIEW
 
-Core implementation for the conflict-free account manager, optional Codex CLI forwarding wrapper, OAuth/storage/runtime services, optional plugin-host request bridge, and default-on runtime Responses rotation proxy. The current architecture is manager-first: `scripts/codex-multi-auth.js` owns the primary account-management entrypoint, `scripts/codex.js` owns explicit wrapper forwarding and runtime proxy setup, while `lib/` owns account selection, storage, config, app bind, request compatibility, and diagnostics.
+Core implementation for the conflict-free account manager, optional Codex CLI forwarding wrapper, OAuth/storage/runtime services, optional plugin-host request bridge, selected-account native Codex homes, and opt-in runtime Responses rotation proxy. The current architecture is manager-first: `scripts/codex-multi-auth.js` owns the primary account-management entrypoint, `scripts/codex.js` owns explicit wrapper forwarding and runtime proxy setup, while `lib/` owns account selection, storage, config, app bind, request compatibility, and diagnostics.
 
 ## STRUCTURE
 

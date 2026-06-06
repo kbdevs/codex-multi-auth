@@ -142,7 +142,7 @@ Named backup behavior:
 
 | Key | Default | Effect |
 | --- | --- | --- |
-| `codexRuntimeRotationProxy` | `true` | Enable the default-on localhost Responses proxy for forwarded official Codex CLI/app sessions |
+| `codexRuntimeRotationProxy` | `false` | Enable the opt-in localhost Responses proxy for forwarded official Codex CLI/app sessions |
 | `preemptiveQuotaEnabled` | `true` | Defer requests before remaining quota is critically low |
 | `preemptiveQuotaRemainingPercent5h` | `5` | 5-hour quota threshold |
 | `preemptiveQuotaRemainingPercent7d` | `5` | 7-day quota threshold |

@@ -144,10 +144,16 @@ codex-multi-auth forecast --live
 
 ## Runtime Rotation
 
-Runtime rotation is enabled by default for request-bearing sessions launched through `codex-multi-auth-codex ...` or a configured app bind. The local Responses proxy can rotate managed accounts between forwarded official Codex CLI/app requests. Inspect it before relying on rotation for live sessions:
+Runtime rotation is optional for request-bearing sessions launched through `codex-multi-auth-codex ...` or a configured app bind. The default wrapper path uses a native selected-account Codex home. The local Responses proxy can rotate managed accounts between forwarded official Codex CLI/app requests when enabled. Inspect it before relying on rotation for live sessions:
 
 ```bash
 codex-multi-auth rotation status
+```
+
+To enable it:
+
+```bash
+codex-multi-auth rotation enable
 ```
 
 To turn it off and restore the packaged app bind if one was installed:

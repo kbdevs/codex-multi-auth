@@ -79,7 +79,7 @@ Compatibility forms are supported for migrations and wrapper-routed environments
 | `codex-multi-auth models` | Inspect local model/account capability views |
 | `codex-multi-auth monitor` | Aggregate runtime, usage, policy, quota, model, and project state |
 | `codex-multi-auth why-selected [--now|--last]` | Explain which account the selector picks now or via the last persisted runtime snapshot |
-| `codex-multi-auth rotation enable\|disable\|status\|bind-app\|unbind-app` | Manage the default-on runtime Responses proxy for live Codex account rotation |
+| `codex-multi-auth rotation enable\|disable\|status\|bind-app\|unbind-app` | Manage the opt-in runtime Responses proxy for live Codex account rotation |
 
 ---
 
@@ -279,7 +279,7 @@ The `runtimeSnapshot` field is present only with `--last`. `selected` is
 
 ## `codex-multi-auth rotation`
 
-Manages the default-on runtime Responses proxy used by forwarded official Codex sessions. This is separate from normal `codex-multi-auth switch`: the proxy can rotate managed accounts between backend Responses requests while a Codex session stays open.
+Manages the opt-in runtime Responses proxy used by forwarded official Codex sessions. This is separate from normal `codex-multi-auth switch`: the proxy can rotate managed accounts between backend Responses requests while a Codex session stays open.
 
 Usage:
 
@@ -300,7 +300,7 @@ Behavior:
 - `unbind-app` removes the persistent packaged-app bind and restores the backed-up Codex config.
 - `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=0` disables the proxy for the current process without changing settings.
 
-When enabled, the wrapper creates a temporary shadow `CODEX_HOME/config.toml` with a custom provider named `codex-multi-auth-runtime-proxy`, starts a `127.0.0.1` proxy on a random port, and forwards official Codex Responses traffic through that provider. This applies to CLI request commands plus `codex app-server` and `codex app` when they are launched through the wrapper. Existing behavior is unchanged while the setting and env override are off.
+By default, wrapper-launched request commands use a persistent selected-account native Codex home and do not start the proxy. When enabled, the wrapper creates a temporary shadow `CODEX_HOME/config.toml` with a custom provider named `codex-multi-auth-runtime-proxy`, starts a `127.0.0.1` proxy on a random port, and forwards official Codex Responses traffic through that provider. This applies to CLI request commands plus `codex app-server` and `codex app` when they are launched through the wrapper.
 
 If every managed account is temporarily unavailable, the proxy returns `codex_runtime_rotation_pool_exhausted` with a retry hint pointing back to `codex-multi-auth rotation status`.
 

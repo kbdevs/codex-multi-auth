@@ -36,7 +36,7 @@ No. Many users only need the wrapper and `codex-multi-auth ...` commands. The pl
 
 ## Is runtime rotation required?
 
-Runtime rotation is enabled by default for request-bearing forwarded Codex CLI/app sessions. Disable it with `codex-multi-auth rotation disable`, `codexRuntimeRotationProxy=false`, or `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=0` when you need plain official Codex forwarding.
+No. Wrapper-launched Codex sessions use native per-account ChatGPT auth homes by default. Enable runtime rotation with `codex-multi-auth rotation enable`, `codexRuntimeRotationProxy=true`, or `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=1` only when you want the localhost Responses proxy path.
 
 ---
 

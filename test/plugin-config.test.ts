@@ -116,7 +116,7 @@ describe("Plugin Configuration", () => {
 
 			expect(config).toEqual({
 				codexMode: true,
-				codexRuntimeRotationProxy: true,
+				codexRuntimeRotationProxy: false,
 				codexTuiV2: true,
 				codexTuiColorProfile: "truecolor",
 				codexTuiGlyphMode: "ascii",
@@ -187,7 +187,7 @@ describe("Plugin Configuration", () => {
 
 			expect(config).toEqual({
 				codexMode: false,
-				codexRuntimeRotationProxy: true,
+				codexRuntimeRotationProxy: false,
 				codexTuiV2: true,
 				codexTuiColorProfile: "truecolor",
 				codexTuiGlyphMode: "ascii",
@@ -502,7 +502,7 @@ describe("Plugin Configuration", () => {
 
 			expect(config).toEqual({
 				codexMode: true,
-				codexRuntimeRotationProxy: true,
+				codexRuntimeRotationProxy: false,
 				codexTuiV2: true,
 				codexTuiColorProfile: "truecolor",
 				codexTuiGlyphMode: "ascii",
@@ -574,7 +574,7 @@ describe("Plugin Configuration", () => {
 
 			expect(config).toEqual({
 				codexMode: true,
-				codexRuntimeRotationProxy: true,
+				codexRuntimeRotationProxy: false,
 				codexTuiV2: true,
 				codexTuiColorProfile: "truecolor",
 				codexTuiGlyphMode: "ascii",
@@ -640,7 +640,7 @@ describe("Plugin Configuration", () => {
 
 			expect(config).toEqual({
 				codexMode: true,
-				codexRuntimeRotationProxy: true,
+				codexRuntimeRotationProxy: false,
 				codexTuiV2: true,
 				codexTuiColorProfile: "truecolor",
 				codexTuiGlyphMode: "ascii",
@@ -1142,7 +1142,10 @@ describe("Plugin Configuration", () => {
 
 		it("resolves runtime rotation proxy from env over config over default", () => {
 			delete process.env.CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY;
-			expect(getCodexRuntimeRotationProxy({})).toBe(true);
+			expect(getCodexRuntimeRotationProxy({})).toBe(false);
+			expect(
+				getCodexRuntimeRotationProxy({ codexRuntimeRotationProxy: true }),
+			).toBe(true);
 			expect(
 				getCodexRuntimeRotationProxy({ codexRuntimeRotationProxy: false }),
 			).toBe(false);

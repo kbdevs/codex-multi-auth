@@ -102,9 +102,9 @@ For maintainer/debug flows, see advanced/internal controls in [development/CONFI
 
 ## Runtime Rotation Upgrade Note
 
-The 2.0.1 line makes runtime rotation the default for request-bearing wrapper-launched Codex sessions and keeps the packaged app bind reversible.
+Current builds keep wrapper-launched Codex sessions on native ChatGPT auth by default. The wrapper prepares a selected-account `CODEX_HOME` under `~/.codex/multi-auth/native-homes/` and does not start the local Responses proxy unless runtime rotation is explicitly enabled.
 
-- Current installs route request-bearing commands launched through `codex-multi-auth-codex ...` through the localhost rotation proxy unless `codexRuntimeRotationProxy=false` or `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=0` is set.
+- Set `codexRuntimeRotationProxy=true`, run `codex-multi-auth rotation enable`, or set `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=1` to route request-bearing commands launched through `codex-multi-auth-codex ...` through the localhost rotation proxy.
 - `codex-multi-auth rotation enable` persists the setting and repairs supported packaged Codex app binds through a reversible localhost router.
 - `codex-multi-auth rotation disable` turns the setting off and removes the persistent app bind.
 - Set `CODEX_MULTI_AUTH_APP_BIND_INSTALL=0` before install/update if you only want wrapper-launched CLI/app sessions routed and do not want the packaged app bind installed.

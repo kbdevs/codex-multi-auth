@@ -59,17 +59,18 @@ For dashboard display values:
 1. Standalone manager receives `codex-multi-auth ...` and normalizes bare subcommands to `auth ...` before dispatch.
 2. Optional wrapper receives `codex-multi-auth-codex ...`, normalizes compatibility aliases, and runs auth-manager commands locally.
 3. If a wrapper command is not in auth-manager scope, discover and forward to the official Codex CLI binary.
-4. For forwarded request-bearing commands, check whether runtime rotation is enabled.
+4. For forwarded request-bearing commands, check whether runtime rotation is enabled; otherwise prepare a native selected-account Codex home.
 
 * * *
 
 ## 6) Runtime Rotation Flow
 
-1. Resolve `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY`; if unset, read `pluginConfig.codexRuntimeRotationProxy`, which defaults to enabled.
-2. If disabled or the forwarded command is help/non-requesting, forward directly to official Codex.
-3. If enabled, start a loopback Responses proxy with a per-process client token.
-4. Create a temporary shadow `CODEX_HOME` and rewrite `config.toml` to use `codex-multi-auth-runtime-proxy`.
-5. Forward official Codex with the shadow home.
+1. Resolve `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY`; if unset, read `pluginConfig.codexRuntimeRotationProxy`, which defaults to disabled.
+2. If disabled and the forwarded command is request-bearing, prepare a persistent selected-account native `CODEX_HOME`.
+3. If disabled or the forwarded command is help/non-requesting, forward to official Codex without a local Responses provider.
+4. If enabled, start a loopback Responses proxy with a per-process client token.
+5. Create a temporary shadow `CODEX_HOME` and rewrite `config.toml` to use `codex-multi-auth-runtime-proxy`.
+6. Forward official Codex with the shadow home.
 6. Proxy request handling selects/refreshed managed accounts and rotates on rate limit, auth, network, or server failure before streaming starts.
 7. On process exit, sync refreshed official Codex state files back and remove the shadow home.
 

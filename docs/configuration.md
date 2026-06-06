@@ -29,7 +29,7 @@ Runtime configuration is resolved from unified settings, optional override files
   },
   "pluginConfig": {
     "codexMode": true,
-    "codexRuntimeRotationProxy": true,
+    "codexRuntimeRotationProxy": false,
     "liveAccountSync": true,
     "sessionAffinity": true,
     "proactiveRefreshGuardian": true,
@@ -106,7 +106,9 @@ Keep these enabled for most environments:
 
 ## Runtime Rotation Proxy
 
-`codexRuntimeRotationProxy` is enabled by default. When enabled through defaults, settings, `codex-multi-auth rotation enable`, or `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=1`, the `codex-multi-auth-codex` wrapper starts a localhost-only Responses proxy for forwarded official Codex sessions, including CLI request commands, `codex app-server`, and `codex app` launches through the wrapper. The wrapper writes a temporary shadow `CODEX_HOME/config.toml` that selects a custom provider named `codex-multi-auth-runtime-proxy`, launches the official Codex surface against that provider, and removes the shadow home after the owning process exits. Set `codexRuntimeRotationProxy=false`, run `codex-multi-auth rotation disable`, or set `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=0` to bypass the proxy.
+`codexRuntimeRotationProxy` is disabled by default. In the default wrapper path, `codex-multi-auth-codex` prepares a persistent per-account native `CODEX_HOME` under `~/.codex/multi-auth/native-homes/` and launches the official Codex CLI with normal ChatGPT auth files instead of a local API-compatible provider. Enable the legacy runtime proxy with `codex-multi-auth rotation enable`, `codexRuntimeRotationProxy=true`, or `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=1` only when you want per-request proxy rotation.
+
+When enabled, the wrapper starts a localhost-only Responses proxy for forwarded official Codex sessions, including CLI request commands, `codex app-server`, and `codex app` launches through the wrapper. The wrapper writes a temporary shadow `CODEX_HOME/config.toml` that selects a custom provider named `codex-multi-auth-runtime-proxy`, launches the official Codex surface against that provider, and removes the shadow home after the owning process exits. Set `codexRuntimeRotationProxy=false`, run `codex-multi-auth rotation disable`, or set `CODEX_MULTI_AUTH_RUNTIME_ROTATION_PROXY=0` to bypass the proxy.
 
 The proxy preserves request bodies and streaming responses, replaces outbound auth headers with the selected managed account, and rotates to another account before response bytes are streamed when it sees rate limits, server errors, network failures, or refresh failures. It removes hop-by-hop headers, private account metadata headers, and stale decoded `content-encoding` from client responses. If every account is unavailable, the proxy returns a structured pool-exhaustion error that points to `codex-multi-auth rotation status`.
 

@@ -131,7 +131,7 @@ npm test -- test/storage.test.ts test/storage-async.test.ts test/storage-recover
 Key guardrails to watch:
 
 - request invariants stay locked: `stream: true`, `store: false`, and `reasoning.encrypted_content`
-- runtime rotation stays default-on, loopback-only, and authenticated with local client keys
+- runtime rotation stays opt-in, loopback-only, and authenticated with local client keys
 - shadow-home cleanup and sync-back remain safe under Windows-style `EBUSY`/`EPERM` failures
 - storage failures still produce actionable `StorageError` hints
 - linked-worktree and forged-path protections remain covered by `test/paths.test.ts`

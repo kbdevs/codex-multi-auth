@@ -273,6 +273,21 @@ async function loadRuntimeRotationConfigModule() {
 	}
 }
 
+async function loadNativeCodexHomeModule() {
+	try {
+		const mod = await import("../dist/lib/runtime/native-account-home.js");
+		if (typeof mod.prepareNativeCodexHomeContext !== "function") {
+			return null;
+		}
+		return mod;
+	} catch (error) {
+		if (error && typeof error === "object" && "code" in error && error.code === "ERR_MODULE_NOT_FOUND") {
+			return null;
+		}
+		throw error;
+	}
+}
+
 function readBooleanEnvFlag(name) {
 	const normalized = (process.env[name] ?? "").trim().toLowerCase();
 	if (["1", "true", "yes"].includes(normalized)) return true;
@@ -1002,24 +1017,31 @@ async function forwardToRealCodex(codexBin, rawArgs, baseEnv = process.env) {
 			compatibilityRequestedModel,
 			baseEnv,
 		);
-		const runtimeProxyContext = await createRuntimeRotationProxyContextIfEnabled(
-			compatibility,
+		const runtimeProxyEnabled = await isRuntimeRotationProxyEnabled(
 			rawArgs,
+			compatibility.env,
 		);
+		const launchContext = runtimeProxyEnabled
+			? await createRuntimeRotationProxyContextIfEnabled(
+					compatibility,
+					rawArgs,
+					true,
+				)
+			: await createNativeCodexHomeContextIfAvailable(compatibility, rawArgs);
 		const result = await forwardToRealCodexOnce(
 			codexBin,
-			runtimeProxyContext.args,
-			runtimeProxyContext.env,
-			runtimeProxyContext.cleanup,
+			launchContext.args,
+			launchContext.env,
+			launchContext.cleanup,
 			{
 				captureOutput: shouldCaptureForwardedOutputForArgs(
 					rawArgs,
-					runtimeProxyContext.env,
+					launchContext.env,
 				),
 				proxyAppServerAccountRead:
 					isCodexAppServerCommand(rawArgs) &&
-					(runtimeProxyContext.proxyAppServerAccountRead === true ||
-						(runtimeProxyContext.env[APP_SERVER_ACCOUNT_LABEL_ENV] ?? "").trim() ===
+					(launchContext.proxyAppServerAccountRead === true ||
+						(launchContext.env[APP_SERVER_ACCOUNT_LABEL_ENV] ?? "").trim() ===
 							"1"),
 			},
 		);
@@ -2808,13 +2830,23 @@ function installRuntimeRotationAppServerCliShim(forwardedEnv) {
 		} catch {
 			// Best-effort stale shim cleanup only.
 		}
-		try {
-			linkSync(process.execPath, executablePath);
-		} catch {
-			copyFileSync(process.execPath, executablePath);
-		}
 		if (process.platform !== "win32") {
+			writeFileSync(
+				executablePath,
+				[
+					"#!/bin/sh",
+					`exec ${JSON.stringify(process.execPath)} "$@"`,
+					"",
+				].join("\n"),
+				{ encoding: "utf8", mode: 0o755 },
+			);
 			chmodSync(executablePath, 0o755);
+		} else {
+			try {
+				linkSync(process.execPath, executablePath);
+			} catch {
+				copyFileSync(process.execPath, executablePath);
+			}
 		}
 		writeFileSync(
 			preloadPath,
@@ -3269,8 +3301,12 @@ async function createRuntimeRotationAppHelperContext(
 async function createRuntimeRotationProxyContextIfEnabled(
 	baseContext,
 	rawArgs,
+	enabledOverride,
 ) {
-	const enabled = await isRuntimeRotationProxyEnabled(rawArgs, baseContext.env);
+	const enabled =
+		typeof enabledOverride === "boolean"
+			? enabledOverride
+			: await isRuntimeRotationProxyEnabled(rawArgs, baseContext.env);
 	if (!enabled) {
 		return baseContext;
 	}
@@ -3345,6 +3381,26 @@ async function createRuntimeRotationProxyContextIfEnabled(
 		cleanup,
 		proxyAppServerAccountRead: isCodexAppServerCommand(rawArgs),
 	};
+}
+
+async function createNativeCodexHomeContextIfAvailable(baseContext, rawArgs) {
+	if (!shouldUseRuntimeRoutingForForwardedArgs(rawArgs)) {
+		return baseContext;
+	}
+
+	const nativeModule = await loadNativeCodexHomeModule();
+	if (!nativeModule) {
+		return baseContext;
+	}
+
+	try {
+		return await nativeModule.prepareNativeCodexHomeContext(baseContext);
+	} catch (error) {
+		console.error(
+			`codex-multi-auth native Codex auth home failed; continuing with the existing Codex home: ${error instanceof Error ? error.message : String(error)}`,
+		);
+		return baseContext;
+	}
 }
 
 async function loadRuntimeObservabilityModule() {
